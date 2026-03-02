@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Binance Futures Kline Data Terminal - Professional cryptocurrency trading data tool">
+    <meta name="theme-color" content="#0a0a0a">
+    <title>Binance Kline Terminal Pro</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <!-- Luxon for timezone handling -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/luxon/3.4.4/luxon.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #050505;
+            color: #e5e5e5;
+            overflow-x: hidden;
+        }
+        
+        .mono {
+            font-family: 'JetBrains Mono', 'Courier New', monospace;
+        }
+        
+        /* Glassmorphism */
+        .glass {
+            background: rgba(20, 20, 25, 0.7);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .glass-panel {
+            background: rgba(25, 25, 30, 0.6);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+        }
+        
+        /* Neon effects */
+        .neon-border {
+            box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.2),
+                        0 0 20px rgba(234, 179, 8, 0.1),
+                        inset 0 0 20px rgba(234, 179, 8, 0.05);
+        }
+        
+        .neon-text {
+            text-shadow: 0 0 10px rgba(234, 179, 8, 0.5);
+        }
+        
+        /* Gradients */
+        .gradient-text {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #ea580c 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .gradient-border {
+            position: relative;
+        }
+        
+        .gradient-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, #fbbf24, #ea580c);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        
+        /* Trading colors */
+        .up { color: #10b981; }
+        .down { color: #ef4444; }
+        .neutral { color: #6b7280; }
+        
+        /* Animations */
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 0 5px rgba(234, 179, 8, 0.2); }
+            50% { box-shadow: 0 0 20px rgba(234, 179, 8, 0.4); }
+        }
+        
+        .animate-pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .slide-up {
+            animation: slide-up 0.5s ease-out;
+        }
+        
+        /* Loading */
+        .loading-bar {
+            background: linear-gradient(90deg, #fbbf24 0%, #f59e0b 50%, #fbbf24 100%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: #0a0a0a;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fbbf24;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .mobile-stack {
+                flex-direction: column;
+            }
+            
+            .mobile-full {
+                width: 100%;
+            }
+            
+            .mobile-text-sm {
+                font-size: 0.875rem;
+            }
+            
+            .mobile-p-2 {
+                padding: 0.5rem;
+            }
+        }
+        
+        /* Touch feedback */
+        .touch-feedback:active {
+            transform: scale(0.98);
+            opacity: 0.9;
+        }
+        
+        /* Table styles */
+        .data-table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .data-table th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        
+        .data-row {
+            transition: all 0.2s ease;
+        }
+        
+        .data-row:hover {
+            background: rgba(251, 191, 36, 0.08);
+        }
+        
+        /* Input styles */
+        .input-field {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(75, 85, 99, 0.4);
+            transition: all 0.3s ease;
+        }
+        
+        .input-field:focus {
+            border-color: #fbbf24;
+            box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.1);
+            outline: none;
+        }
+        
+        /* Button styles */
+        .btn-primary {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: 0.5s;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(251, 191, 36, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(55, 65, 81, 0.6);
+            border: 1px solid rgba(75, 85, 99, 0.5);
+            color: #e5e5e5;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(75, 85, 99, 0.8);
+            border-color: #9ca3af;
+        }
+        
+        /* Status indicators */
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .status-online {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        /* Card hover effects */
+        .stat-card {
+            transition: all 0.3s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .stat-card:hover {
+            transform: translateX(5px);
+            border-left-color: #fbbf24;
+        }
+        
+        /* Select wrapper */
+        .select-wrapper {
+            position: relative;
+        }
+        
+        .select-wrapper::after {
+            content: '▼';
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #6b7280;
+            pointer-events: none;
+            font-size: 0.7rem;
+        }
+        
+        /* Timezone badge */
+        .tz-badge {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(20, 20, 25, 0.95);
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        
+        /* Responsive table container */
+        .table-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        /* Hide number input arrows */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        
+        /* Focus visible for accessibility */
+        :focus-visible {
+            outline: 2px solid #fbbf24;
+            outline-offset: 2px;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-black to-black">
+
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 glass border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <div class="flex items-center gap-3">
+                    <div class="relative w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-600 flex items-center justify-center shadow-lg shadow-yellow-500/20">
+                        <span class="text-black font-bold text-xl">₿</span>
+                        <div class="absolute inset-0 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-600 opacity-50 blur-md"></div>
+                    </div>
+                    <div class="hidden sm:block">
+                        <h1 class="text-lg font-bold gradient-text tracking-tight">Kline Terminal</h1>
+                        <div class="flex items-center gap-2 text-[10px] text-gray-500 mono uppercase tracking-wider">
+                            <span class="status-dot status-online"></span>
+                            <span>Binance Futures API</span>
+                            <span id="headerTz" class="tz-badge ml-1">UTC</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mobile menu button -->
+                <button onclick="toggleMobileMenu()" class="sm:hidden p-2 rounded-lg bg-white/5 text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                </button>
+                
+                <!-- Desktop nav -->
+                <nav class="hidden sm:flex items-center gap-6">
+                    <a href="#" class="text-sm text-gray-400 hover:text-yellow-400 transition-colors">Documentation</a>
+                    <a href="#" class="text-sm text-gray-400 hover:text-yellow-400 transition-colors">API Status</a>
+                    <button onclick="showHelp()" class="text-sm text-gray-400 hover:text-yellow-400 transition-colors">Help</button>
+                </nav>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div id="mobileMenu" class="hidden sm:hidden glass border-t border-white/5">
+            <div class="px-4 py-3 space-y-2">
+                <p class="text-xs text-gray-500 mono">Binance Futures API</p>
+                <p class="text-xs text-gray-400">Selected: <span id="mobileTz">UTC</span></p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="pt-20 pb-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto space-y-6">
+        
+        <!-- Control Panel -->
+        <section class="glass-panel rounded-2xl p-4 sm:p-6 neon-border slide-up">
+            <div class="flex items-center gap-2 mb-4">
+                <div class="w-1 h-6 bg-gradient-to-b from-yellow-400 to-orange-600 rounded-full"></div>
+                <h2 class="text-lg font-semibold text-white">Query Parameters</h2>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+                <!-- Symbol -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                        Symbol
+                        <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" id="symbol" value="BTCUSDT" placeholder="e.g. BTCUSDT"
+                        class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono uppercase text-white placeholder-gray-600">
+                </div>
+                
+                <!-- Interval -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Interval</label>
+                    <div class="select-wrapper">
+                        <select id="interval" class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono text-white appearance-none cursor-pointer">
+                            <option value="1m">1m</option>
+                            <option value="3m">3m</option>
+                            <option value="5m">5m</option>
+                            <option value="15m">15m</option>
+                            <option value="30m">30m</option>
+                            <option value="1h" selected>1h</option>
+                            <option value="2h">2h</option>
+                            <option value="4h">4h</option>
+                            <option value="6h">6h</option>
+                            <option value="8h">8h</option>
+                            <option value="12h">12h</option>
+                            <option value="1d">1d</option>
+                            <option value="3d">3d</option>
+                            <option value="1w">1w</option>
+                            <option value="1M">1M</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Timezone -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-blue-400 uppercase tracking-wider flex items-center gap-1">
+                        Timezone
+                        <svg class="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    </label>
+                    <div class="select-wrapper">
+                        <select id="timezone" onchange="handleTimezoneChange()" 
+                            class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono text-white border-blue-500/30 appearance-none cursor-pointer bg-blue-500/5">
+                            <option value="UTC">UTC</option>
+                            <option value="Asia/Shanghai" selected>Asia/Shanghai (北京)</option>
+                            <option value="Asia/Tokyo">Asia/Tokyo (东京)</option>
+                            <option value="Asia/Seoul">Asia/Seoul (首尔)</option>
+                            <option value="Asia/Singapore">Asia/Singapore (新加坡)</option>
+                            <option value="Asia/Hong_Kong">Asia/Hong Kong (香港)</option>
+                            <option value="Asia/Taipei">Asia/Taipei (台北)</option>
+                            <option value="Asia/Bangkok">Asia/Bangkok (曼谷)</option>
+                            <option value="Asia/Dubai">Asia/Dubai (迪拜)</option>
+                            <option value="Europe/London">Europe/London (伦敦)</option>
+                            <option value="Europe/Paris">Europe/Paris (巴黎)</option>
+                            <option value="Europe/Berlin">Europe/Berlin (柏林)</option>
+                            <option value="Europe/Moscow">Europe/Moscow (莫斯科)</option>
+                            <option value="America/New_York">America/New York (纽约)</option>
+                            <option value="America/Chicago">America/Chicago (芝加哥)</option>
+                            <option value="America/Los_Angeles">America/Los Angeles (洛杉矶)</option>
+                            <option value="America/Toronto">America/Toronto (多伦多)</option>
+                            <option value="America/Sao_Paulo">America/Sao Paulo (圣保罗)</option>
+                            <option value="Australia/Sydney">Australia/Sydney (悉尼)</option>
+                            <option value="Pacific/Auckland">Pacific/Auckland (奥克兰)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Start Time -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider flex justify-between">
+                        <span>Start Time</span>
+                        <span id="startTzHint" class="text-[10px] text-blue-400">CST</span>
+                    </label>
+                    <input type="datetime-local" id="startDate" step="1"
+                        class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono text-white">
+                    <p class="text-[10px] text-gray-600 mono" id="startUtcDisplay">UTC: --</p>
+                </div>
+                
+                <!-- End Time -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider flex justify-between">
+                        <span>End Time</span>
+                        <span id="endTzHint" class="text-[10px] text-blue-400">CST</span>
+                    </label>
+                    <input type="datetime-local" id="endDate" step="1"
+                        class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono text-white">
+                    <p class="text-[10px] text-gray-600 mono" id="endUtcDisplay">UTC: --</p>
+                </div>
+                
+                <!-- Limit -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-gray-400 uppercase tracking-wider">Limit</label>
+                    <input type="number" id="limit" value="100" min="1" max="1000"
+                        class="input-field w-full rounded-lg px-3 py-2.5 text-sm mono text-white">
+                    <p class="text-[10px] text-gray-600">Max: 1000</p>
+                </div>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button onclick="fetchData()" 
+                    class="btn-primary touch-feedback flex-1 sm:flex-none px-6 py-3 rounded-lg flex items-center justify-center gap-2 text-sm">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    <span>Fetch Data</span>
+                </button>
+                
+                <button onclick="setDefaultTime()" 
+                    class="btn-secondary touch-feedback px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <span>Reset Time</span>
+                </button>
+                
+                <button onclick="exportToExcel()" id="exportBtn" disabled
+                    class="btn-secondary touch-feedback px-4 py-3 rounded-lg text-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ml-auto">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    <span>Export Excel</span>
+                </button>
+            </div>
+            
+            <!-- Progress Bar -->
+            <div id="progressContainer" class="hidden mt-4">
+                <div class="flex justify-between text-xs text-gray-400 mb-1">
+                    <span class="mono">Fetching data...</span>
+                    <span id="progressText" class="mono">0%</span>
+                </div>
+                <div class="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                    <div id="progressBar" class="loading-bar h-full rounded-full w-0 transition-all duration-300"></div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Stats Grid -->
+        <div id="statsContainer" class="grid grid-cols-2 lg:grid-cols-4 gap-3 hidden slide-up">
+            <div class="stat-card glass-panel rounded-xl p-4 bg-gradient-to-br from-gray-900/50 to-transparent">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Data Count</p>
+                <p class="text-2xl font-bold mono text-white" id="statCount">-</p>
+            </div>
+            <div class="stat-card glass-panel rounded-xl p-4 bg-gradient-to-br from-gray-900/50 to-transparent border-l-2 border-green-500">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Highest Price</p>
+                <p class="text-2xl font-bold mono up" id="statHigh">-</p>
+            </div>
+            <div class="stat-card glass-panel rounded-xl p-4 bg-gradient-to-br from-gray-900/50 to-transparent border-l-2 border-red-500">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Lowest Price</p>
+                <p class="text-2xl font-bold mono down" id="statLow">-</p>
+            </div>
+            <div class="stat-card glass-panel rounded-xl p-4 bg-gradient-to-br from-gray-900/50 to-transparent border-l-2 border-blue-500">
+                <p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Time Range</p>
+                <p class="text-lg font-bold mono text-white" id="statRange">-</p>
+            </div>
+        </div>
+        
+        <!-- Data Table -->
+        <section class="glass-panel rounded-2xl overflow-hidden slide-up">
+            <div class="px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <h3 class="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                    <svg class="w-4 h-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Kline Data
+                </h3>
+                <span class="text-xs text-blue-400 mono bg-blue-400/10 px-2 py-1 rounded">Display: <span id="tableTz">Asia/Shanghai</span></span>
+            </div>
+            
+            <div class="table-container max-h-[60vh] overflow-auto">
+                <table class="w-full data-table text-xs sm:text-sm">
+                    <thead>
+                        <tr class="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-white/5">
+                            <th class="px-4 py-3 font-medium whitespace-nowrap">Time <span class="text-blue-400 text-[10px] normal-case">(Local)</span></th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap">Open</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap">High</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap">Low</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap">Close</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap hidden sm:table-cell">Volume</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap hidden lg:table-cell">Quote Vol</th>
+                            <th class="px-4 py-3 font-medium text-right whitespace-nowrap hidden xl:table-cell">Trades</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="mono divide-y divide-white/5">
+                        <tr>
+                            <td colspan="8" class="px-4 py-12 text-center text-gray-500">
+                                <div class="flex flex-col items-center gap-3">
+                                    <div class="w-16 h-16 rounded-full bg-gray-800/50 flex items-center justify-center">
+                                        <svg class="w-8 h-8 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                                    </div>
+                                    <div>
+                                        <p class="text-gray-400 font-medium">Ready to fetch data</p>
+                                        <p class="text-xs text-gray-600 mt-1">Configure parameters and click "Fetch Data"</p>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+        
+        <!-- Footer Info -->
+        <footer class="text-xs text-gray-600 mono space-y-1 pt-4 border-t border-white/5">
+            <div class="flex flex-wrap gap-4 justify-between items-center">
+                <div class="space-y-1">
+                    <p>API: <span class="text-gray-400">fapi.binance.com/v1/klines</span></p>
+                    <p>Data: Binance Futures | Auto timezone conversion enabled</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-gray-500">© 2024 Kline Terminal Pro</p>
+                </div>
+            </div>
+        </footer>
+    </main>
+    
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <span id="toastMessage">Message</span>
+    </div>
+
+    <script>
+        // Global state
+        let currentData = [];
+        const DateTime = luxon.DateTime;
+        
+        // Timezone abbreviations
+        const tzAbbr = {
+            'Asia/Shanghai': 'CST', 'Asia/Tokyo': 'JST', 'Asia/Seoul': 'KST',
+            'Asia/Singapore': 'SGT', 'Asia/Hong_Kong': 'HKT', 'Asia/Taipei': 'CST',
+            'Asia/Bangkok': 'ICT', 'Asia/Dubai': 'GST', 'Europe/London': 'GMT',
+            'Europe/Paris': 'CET', 'Europe/Berlin': 'CET', 'Europe/Moscow': 'MSK',
+            'America/New_York': 'EST', 'America/Chicago': 'CST', 'America/Los_Angeles': 'PST',
+            'America/Toronto': 'EST', 'America/Sao_Paulo': 'BRT', 'Australia/Sydney': 'AEST',
+            'Pacific/Auckland': 'NZST', 'UTC': 'UTC'
+        };
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            handleTimezoneChange();
+            setDefaultTime();
+        });
+        
+        // Handle timezone change
+        function handleTimezoneChange() {
+            const tz = document.getElementById('timezone').value;
+            const abbr = tzAbbr[tz] || tz;
+            
+            // Update UI
+            document.getElementById('headerTz').textContent = abbr;
+            document.getElementById('mobileTz').textContent = tz;
+            document.getElementById('tableTz').textContent = tz;
+            document.getElementById('startTzHint').textContent = abbr;
+            document.getElementById('endTzHint').textContent = abbr;
+            
+            // Update UTC hints
+            updateUtcHints();
+            
+            // Re-render if data exists
+            if (currentData.length > 0) {
+                renderTable(currentData);
+            }
+        }
+        
+        // Update UTC display hints
+        function updateUtcHints() {
+            const tz = document.getElementById('timezone').value;
+            const startVal = document.getElementById('startDate').value;
+            const endVal = document.getElementById('endDate').value;
+            
+            if (startVal) {
+                const dt = DateTime.fromISO(startVal, { zone: tz });
+                document.getElementById('startUtcDisplay').textContent = `UTC: ${dt.toUTC().toFormat('yyyy-MM-dd HH:mm')}`;
+            } else {
+                document.getElementById('startUtcDisplay').textContent = 'UTC: --';
+            }
+            
+            if (endVal) {
+                const dt = DateTime.fromISO(endVal, { zone: tz });
+                document.getElementById('endUtcDisplay').textContent = `UTC: ${dt.toUTC().toFormat('yyyy-MM-dd HH:mm')}`;
+            } else {
+                document.getElementById('endUtcDisplay').textContent = 'UTC: --';
+            }
+        }
+        
+        // Listeners
+        document.getElementById('startDate').addEventListener('input', updateUtcHints);
+        document.getElementById('endDate').addEventListener('input', updateUtcHints);
+        
+        // Set default time (last 24h in selected timezone)
+        function setDefaultTime() {
+            const tz = document.getElementById('timezone').value;
+            const now = DateTime.now().setZone(tz);
+            const yesterday = now.minus({ hours: 24 });
+            
+            document.getElementById('endDate').value = now.toFormat("yyyy-MM-dd'T'HH:mm:ss");
+            document.getElementById('startDate').value = yesterday.toFormat("yyyy-MM-dd'T'HH:mm:ss");
+            
+            updateUtcHints();
+            showToast('Time reset to last 24 hours');
+        }
+        
+        // Format number
+        function formatNumber(num, decimals = 2) {
+            return parseFloat(num).toLocaleString('en-US', {
+                minimumFractionDigits: decimals,
+                maximumFractionDigits: decimals
+            });
+        }
+        
+        // Format time for display
+        function formatTime(timestamp) {
+            const tz = document.getElementById('timezone').value;
+            return DateTime.fromMillis(timestamp).setZone(tz).toFormat('yyyy-MM-dd HH:mm:ss');
+        }
+        
+        // Fetch data
+        async function fetchData() {
+            const symbol = document.getElementById('symbol').value.toUpperCase().trim();
+            const interval = document.getElementById('interval').value;
+            const tz = document.getElementById('timezone').value;
+            const limit = parseInt(document.getElementById('limit').value) || 100;
+            const startInput = document.getElementById('startDate').value;
+            const endInput = document.getElementById('endDate').value;
+            
+            if (!symbol) {
+                showToast('Please enter a symbol', 'error');
+                return;
+            }
+            
+            // Convert local times to UTC timestamps
+            let startTime = null, endTime = null;
+            if (startInput) {
+                startTime = DateTime.fromISO(startInput, { zone: tz }).toUTC().toMillis();
+            }
+            if (endInput) {
+                endTime = DateTime.fromISO(endInput, { zone: tz }).toUTC().toMillis();
+            }
+            
+            // UI loading state
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            
+            progressContainer.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            
+            // Simulate progress
+            let progress = 0;
+            const intervalId = setInterval(() => {
+                if (progress < 90) {
+                    progress += Math.random() * 20;
+                    const current = Math.min(progress, 90);
+                    progressBar.style.width = current + '%';
+                    progressText.textContent = Math.floor(current) + '%';
+                }
+            }, 200);
+            
+            try {
+                // Build URL
+                const params = new URLSearchParams({ symbol, interval, limit });
+                if (startTime) params.append('startTime', startTime);
+                if (endTime) params.append('endTime', endTime);
+                
+                const url = `https://fapi.binance.com/fapi/v1/klines?${params}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                
+                const data = await response.json();
+                currentData = data;
+                
+                clearInterval(intervalId);
+                progressBar.style.width = '100%';
+                progressText.textContent = '100%';
+                
+                setTimeout(() => {
+                    progressContainer.classList.add('hidden');
+                    renderTable(data);
+                    updateStats(data);
+                    document.getElementById('exportBtn').disabled = false;
+                    showToast(`Loaded ${data.length} records`);
+                }, 500);
+                
+            } catch (error) {
+                clearInterval(intervalId);
+                progressContainer.classList.add('hidden');
+                document.getElementById('tableBody').innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center">
+                            <div class="text-red-400 font-medium mb-2">Failed to fetch data</div>
+                            <div class="text-xs text-gray-500">${error.message}</div>
+                            <div class="text-xs text-gray-600 mt-2">Check symbol and try again</div>
+                        </td>
+                    </tr>
+                `;
+                showToast('Fetch failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Render table
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            
+            if (!data || data.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="px-4 py-8 text-center text-gray-500">No data available</td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            tbody.innerHTML = data.map((k, i) => {
+                const [time, open, high, low, close, volume] = k;
+                const change = parseFloat(close) - parseFloat(open);
+                const color = change >= 0 ? 'up' : 'down';
+                const bg = i % 2 === 0 ? 'bg-white/[0.02]' : '';
+                
+                return `
+                    <tr class="data-row ${bg} hover:bg-yellow-500/5 transition-colors">
+                        <td class="px-4 py-3 whitespace-nowrap text-gray-300">${formatTime(time)}</td>
+                        <td class="px-4 py-3 text-right ${parseFloat(open) <= parseFloat(close) ? 'up' : 'down'}">${formatNumber(open, 4)}</td>
+                        <td class="px-4 py-3 text-right up font-semibold">${formatNumber(high, 4)}</td>
+                        <td class="px-4 py-3 text-right down font-semibold">${formatNumber(low, 4)}</td>
+                        <td class="px-4 py-3 text-right ${color} font-bold">${formatNumber(close, 4)}</td>
+                        <td class="px-4 py-3 text-right text-gray-400 hidden sm:table-cell">${formatNumber(volume, 4)}</td>
+                        <td class="px-4 py-3 text-right text-gray-400 hidden lg:table-cell">${formatNumber(k[7], 2)}</td>
+                        <td class="px-4 py-3 text-right text-gray-500 hidden xl:table-cell">${parseInt(k[8]).toLocaleString()}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        // Update stats
+        function updateStats(data) {
+            if (!data || data.length === 0) return;
+            
+            const highs = data.map(d => parseFloat(d[2]));
+            const lows = data.map(d => parseFloat(d[3]));
+            const max = Math.max(...highs);
+            const min = Math.min(...lows);
+            
+            const tz = document.getElementById('timezone').value;
+            const start = DateTime.fromMillis(data[0][0]).setZone(tz);
+            const end = DateTime.fromMillis(data[data.length-1][0]).setZone(tz);
+            const diff = end.diff(start, ['days', 'hours']).toObject();
+            
+            let range = '';
+            if (diff.days) range += `${Math.floor(diff.days)}d `;
+            if (diff.hours) range += `${Math.floor(diff.hours)}h`;
+            
+            document.getElementById('statCount').textContent = data.length.toLocaleString();
+            document.getElementById('statHigh').textContent = formatNumber(max, 2);
+            document.getElementById('statLow').textContent = formatNumber(min, 2);
+            document.getElementById('statRange').textContent = range || '<1h';
+            
+            document.getElementById('statsContainer').classList.remove('hidden');
+        }
+        
+        // Export to Excel
+        function exportToExcel() {
+            if (!currentData || currentData.length === 0) {
+                showToast('No data to export', 'error');
+                return;
+            }
+            
+            const symbol = document.getElementById('symbol').value.toUpperCase();
+            const interval = document.getElementById('interval').value;
+            const tz = document.getElementById('timezone').value;
+            const tzCode = tzAbbr[tz] || 'UTC';
+            
+            const rows = currentData.map(k => ({
+                'Time (Local)': formatTime(k[0]),
+                'Timestamp (UTC)': k[0],
+                'Open': parseFloat(k[1]),
+                'High': parseFloat(k[2]),
+                'Low': parseFloat(k[3]),
+                'Close': parseFloat(k[4]),
+                'Volume': parseFloat(k[5]),
+                'Quote Volume': parseFloat(k[7]),
+                'Trades': parseInt(k[8]),
+                'Taker Buy Base': parseFloat(k[9]),
+                'Taker Buy Quote': parseFloat(k[10])
+            }));
+            
+            const ws = XLSX.utils.json_to_sheet(rows);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Kline Data');
+            
+            // Auto-width
+            ws['!cols'] = [{wch:20}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:15}, {wch:15}, {wch:12}, {wch:15}, {wch:15}];
+            
+            const filename = `${symbol}_${interval}_${tzCode}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, filename);
+            
+            showToast('Excel downloaded');
+        }
+        
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const msg = document.getElementById('toastMessage');
+            
+            msg.textContent = message;
+            toast.style.borderColor = type === 'error' ? 'rgba(239, 68, 68, 0.5)' : 'rgba(251, 191, 36, 0.3)';
+            toast.classList.add('show');
+            
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+        
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+        
+        // Help modal (simplified as alert for now)
+        function showHelp() {
+            alert('Binance Kline Terminal Pro\n\n1. Select your local timezone\n2. Enter symbol (e.g. BTCUSDT)\n3. Select time range in YOUR timezone\n4. System auto-converts to UTC for API\n5. Data displays in your selected timezone');
+        }
+        
+        // Enter key to fetch
+        document.getElementById('symbol').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fetchData();
+        });
+    </script>
+</body>
+</html>
